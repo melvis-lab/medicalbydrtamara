@@ -242,7 +242,7 @@ const App = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-gray-50 flex items-center justify-center font-sans text-slate-800">
+    <div className="h-[100dvh] w-full bg-gray-50 flex items-center justify-center font-sans text-slate-800">
       <div className="w-full h-full max-w-md md:max-w-4xl bg-white shadow-2xl md:rounded-2xl overflow-hidden relative flex flex-col">
         {/* Error Banner */}
         {dbError && (
