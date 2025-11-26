@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Icons } from './Icons';
 import { AiMessage, AppState, LessonContent, AiAction } from '../types';
 import { chatWithAi } from '../services/geminiService';
-import { blobToBase64 } from '../utils/audioUtils';
 
 interface AiTerminalProps {
   appState: AppState;
@@ -15,12 +14,11 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -45,8 +43,36 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
     }
   }, [messages, isOpen]);
 
-  const handleSendMessage = async (text?: string, audioBase64?: string) => {
-    const userMsgText = text || (audioBase64 ? "Audio poruka..." : "");
+  // Speech Recognition Setup
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'sr-RS'; // Serbian language
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setInputText(transcript);
+      };
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const handleSendMessage = async (text?: string) => {
+    const userMsgText = text || inputText;
     if (!userMsgText) return;
 
     const newMessage: AiMessage = {
@@ -60,7 +86,7 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
     setIsLoading(true);
 
     try {
-      const response = await chatWithAi(messages, appState, currentLesson, text, audioBase64);
+      const response = await chatWithAi(messages, appState, currentLesson, userMsgText);
       
       const aiMsg: AiMessage = {
         id: (Date.now() + 1).toString(),
@@ -79,35 +105,16 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const base64 = await blobToBase64(audioBlob);
-        handleSendMessage(undefined, base64);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Mic error", err);
+  const toggleDictation = () => {
+    if (!recognitionRef.current) {
+      alert("Vaš pregledač ne podržava glasovni unos. Pokušajte sa Google Chrome.");
+      return;
     }
-  };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
     }
   };
 
@@ -203,15 +210,15 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
                 type="text" 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage(inputText)}
-                placeholder="Piši ili snimi poruku..."
+                onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+                placeholder={isListening ? "Slušam..." : "Piši ili koristi mikrofon..."}
                 disabled={isLoading}
-                className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:outline-none disabled:opacity-50"
+                className={`flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:outline-none disabled:opacity-50 transition-all ${isListening ? 'bg-red-50 ring-2 ring-red-400' : ''}`}
               />
               
               {inputText ? (
                 <button 
-                  onClick={() => handleSendMessage(inputText)}
+                  onClick={() => handleSendMessage()}
                   disabled={isLoading}
                   className="p-2 bg-gold-500 text-white rounded-full hover:bg-gold-600 transition-colors disabled:opacity-50"
                 >
@@ -219,24 +226,21 @@ const AiTerminal: React.FC<AiTerminalProps> = ({ appState, currentLesson, onActi
                 </button>
               ) : (
                  <button 
-                  onMouseDown={!isLoading ? startRecording : undefined}
-                  onMouseUp={stopRecording}
-                  onMouseLeave={stopRecording}
-                  onTouchStart={!isLoading ? startRecording : undefined}
-                  onTouchEnd={stopRecording}
+                  onClick={toggleDictation}
                   disabled={isLoading}
                   className={`p-2 rounded-full transition-all disabled:opacity-50 ${
-                    isRecording 
+                    isListening 
                       ? 'bg-red-500 text-white scale-110 shadow-lg animate-pulse' 
                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                   }`}
+                  title="Glasovni unos"
                 >
                   <Icons.Mic className="w-5 h-5" />
                 </button>
               )}
             </div>
-            <div className="text-[10px] text-center text-gray-400 mt-2">
-              {isRecording ? "Slušam... (Pusti da pošalješ)" : "Drži mikrofon za govor"}
+            <div className="text-[10px] text-center text-gray-400 mt-2 h-4">
+              {isListening && "Govorite sada..."}
             </div>
           </div>
         </div>
