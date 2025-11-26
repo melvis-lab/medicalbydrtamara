@@ -34,6 +34,7 @@ export const Icons = {
   Back: ChevronLeft,
   Share: Share2,
   Lesson: FileText,
+  FileText,
   Anatomy: Activity,
   Activity,
   Technique: Syringe,

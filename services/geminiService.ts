@@ -194,6 +194,41 @@ export const generateMedicalImage = async (prompt: string): Promise<string> => {
   }
 };
 
+export const generateKeyPoints = async (text: string): Promise<string[]> => {
+  if (!apiKey) throw new Error("API Key missing");
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { text: `
+            Analyze the following medical text (in Serbian) and extract 3-5 distinct, important clinical key points (bullet points).
+            Keep them concise and educational.
+            Input Text: "${text}"
+          ` }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            points: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+
+    const json = JSON.parse(response.text || '{"points": []}');
+    return json.points || [];
+
+  } catch (error) {
+    console.error("Points Gen Error:", error);
+    return ["Greška pri generisanju tačaka."];
+  }
+}
+
 export const chatWithAi = async (
   history: AiMessage[], 
   appState: AppState, 

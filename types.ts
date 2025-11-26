@@ -7,6 +7,11 @@ export interface LessonContent {
   risks: string;
   aftercare: string;
   imagePrompts: string[];
+  // Optional Key Points for fallback/summary
+  anatomyPoints?: string[];
+  techniquePoints?: string[];
+  risksPoints?: string[];
+  aftercarePoints?: string[];
 }
 
 export interface GeneratedImage {

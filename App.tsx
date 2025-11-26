@@ -6,9 +6,10 @@ import LoadingView from './components/LoadingView';
 import LessonView from './components/LessonView';
 import AiTerminal from './components/AiTerminal';
 import CameraCapture from './components/CameraCapture';
-import { generateLessonFromAudio, generateMedicalImage, generateLessonFromImage } from './services/geminiService';
+import { generateLessonFromAudio, generateMedicalImage, generateLessonFromImage, generateKeyPoints } from './services/geminiService';
 import { saveLessonToDB, deleteLessonFromDB, getAllLessonsFromDB } from './services/storageService';
 import { Lesson, AppState, LessonContent, AiAction } from './types';
+import { generateAndSharePdf } from './utils/pdfUtils';
 
 const App = () => {
   // State
@@ -64,7 +65,7 @@ const App = () => {
         audioMimeType: mimeType
       };
 
-      // 2. Generate cover image
+      // 2. Generate ONLY cover image automatically (Thumbnail)
       setLoadingStatus('Generisanje naslovne slike...');
       try {
          const coverPrompt = content.imagePrompts[0] || 'Medical aesthetic clinic professional';
@@ -73,6 +74,8 @@ const App = () => {
       } catch (e) {
          console.error("Auto image gen failed", e);
       }
+      
+      // Note: We DO NOT auto-generate section images anymore per user request.
 
       // Save to DB
       await saveLessonToDB(newLesson);
@@ -104,7 +107,7 @@ const App = () => {
         // No audio for image capture
       };
 
-      // Generate cover
+      // Generate cover automatically
       setLoadingStatus('Generisanje dijagrama...');
       try {
          const coverPrompt = content.imagePrompts[0] || 'Medical anatomy diagram';
@@ -147,6 +150,31 @@ const App = () => {
     }
   };
 
+  const handleGeneratePoints = async (sectionKey: keyof LessonContent, text: string) => {
+    if (!currentLesson) return;
+    setIsGeneratingImage(true); // Re-use loading state for simplicity
+    
+    try {
+      const points = await generateKeyPoints(text);
+      
+      const updatedLesson = { ...currentLesson };
+      // Map section key to points key (e.g., 'anatomy' -> 'anatomyPoints')
+      const pointsKey = `${sectionKey}Points` as keyof LessonContent;
+      
+      // Typescript safe assignment
+      (updatedLesson.content as any)[pointsKey] = points;
+      
+      await saveLessonToDB(updatedLesson);
+      await refreshLessons();
+      setCurrentLesson(updatedLesson);
+      
+    } catch (error) {
+      console.error("Points gen error", error);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
   const handleUpdateLesson = async (updatedLesson: Lesson) => {
      try {
        await saveLessonToDB(updatedLesson);
@@ -171,6 +199,13 @@ const App = () => {
           console.error("Failed to delete", e);
         }
     }
+  };
+
+  const handleShareLesson = async (lesson: Lesson) => {
+    // Render hidden lesson view logic if needed, or share from View directly
+    // For Dashboard sharing, we might need to set current lesson briefly or use a hidden util
+    // For now, let's assume this is triggered from LessonView mostly.
+    console.log("Sharing from dashboard not fully impl in this snippet");
   };
 
   const handleAiAction = (action: AiAction) => {
@@ -207,6 +242,7 @@ const App = () => {
               setAppState(AppState.VIEWING);
             }}
             onDeleteLesson={handleDeleteLesson}
+            onShareLesson={handleShareLesson}
           />
         );
       case AppState.RECORDING:
@@ -232,6 +268,7 @@ const App = () => {
             lesson={currentLesson}
             onBack={() => setAppState(AppState.DASHBOARD)}
             onGenerateImage={handleGenerateImage}
+            onGeneratePoints={handleGeneratePoints}
             onUpdateLesson={handleUpdateLesson}
             isGeneratingImage={isGeneratingImage}
           />

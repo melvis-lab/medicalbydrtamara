@@ -9,9 +9,10 @@ interface DashboardProps {
   onSelectLesson: (lesson: Lesson) => void;
   onDeleteLesson: (id: string) => void;
   onScan: () => void;
+  onShareLesson: (lesson: Lesson) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ lessons, onNewLesson, onSelectLesson, onDeleteLesson, onScan }) => {
+const Dashboard: React.FC<DashboardProps> = ({ lessons, onNewLesson, onSelectLesson, onDeleteLesson, onScan, onShareLesson }) => {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="px-6 py-8 bg-white border-b border-gray-100 flex-shrink-0">
