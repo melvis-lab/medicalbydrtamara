@@ -3,8 +3,7 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { LessonContent, AppState, AiMessage, AiAction } from "../types";
 
 // Ensure API Key is available
-// We use VITE_ prefix because that is required for the browser to see the key
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 const LESSON_SCHEMA: Schema = {

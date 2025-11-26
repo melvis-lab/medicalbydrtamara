@@ -256,12 +256,14 @@ const App = () => {
             {renderContent()}
         </div>
 
-        {/* AI Terminal Overlay */}
-        <AiTerminal 
-           appState={appState} 
-           currentLesson={currentLesson ? currentLesson.content : null}
-           onAction={handleAiAction}
-        />
+        {/* AI Terminal Overlay - Hidden in Camera Mode */}
+        {appState !== AppState.CAMERA && (
+          <AiTerminal 
+            appState={appState} 
+            currentLesson={currentLesson ? currentLesson.content : null}
+            onAction={handleAiAction}
+          />
+        )}
       </div>
     </div>
   );
