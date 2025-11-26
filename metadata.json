@@ -1,0 +1,8 @@
+{
+  "name": "MediBuilder AI",
+  "description": "Voice-to-Training generator for medical education. Converts speech into structured anatomy and clinical training modules.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
