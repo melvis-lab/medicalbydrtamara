@@ -22,7 +22,8 @@ import {
   Wand2,
   Pencil,
   Save,
-  Camera
+  Camera,
+  RefreshCw
 } from 'lucide-react';
 
 export const Icons = {
@@ -50,5 +51,6 @@ export const Icons = {
   Save,
   Camera,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 };
