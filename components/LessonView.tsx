@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Lesson, LessonContent } from '../types';
 import { Icons } from './Icons';
 import { generateAndSharePdf } from '../utils/pdfUtils';
+import Recorder from './Recorder';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -29,6 +30,7 @@ const LessonView: React.FC<LessonViewProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState<LessonContent>(lesson.content);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // Audio Player State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -108,10 +110,23 @@ const LessonView: React.FC<LessonViewProps> = ({
     }
   };
 
+  const handleNewRecording = (base64Audio: string, mimeType: string) => {
+    // Update the lesson with the new audio
+    const updatedLesson = {
+        ...lesson,
+        audioBase64: base64Audio,
+        audioMimeType: mimeType,
+        audioDurationSec: 0 // Duration will be calculated when loaded by audio tag
+    };
+    onUpdateLesson(updatedLesson);
+    setShowRecorder(false);
+  };
+
   // Helper to render sections with Edit/View logic and Image/Points Slots
   const renderSection = (
     title: string, 
     field: keyof LessonContent, 
+    Icon: React.ElementType,
     imageIndex?: number, 
     imagePrompt?: string
   ) => {
@@ -123,9 +138,10 @@ const LessonView: React.FC<LessonViewProps> = ({
     const points = (lesson.content as any)[pointsKey] as string[];
 
     return (
-      <section className="mb-8 animate-in slide-in-from-bottom-4 duration-500 break-inside-avoid">
-        <h2 className="text-xl font-serif font-bold text-gray-800 mb-3 border-l-4 border-gold-400 pl-3">
-          {title}
+      <section className="mb-8 animate-in slide-in-from-bottom-4 duration-500 break-inside-avoid" data-section={field}>
+        <h2 className="text-xl font-serif font-bold text-gray-800 mb-3 border-l-4 border-gold-400 pl-3 flex items-center gap-2">
+          <Icon className="w-6 h-6 text-gold-500" />
+          <span>{title}</span>
         </h2>
         
         {isEditing ? (
@@ -136,7 +152,7 @@ const LessonView: React.FC<LessonViewProps> = ({
             placeholder={`Unesite tekst za ${title}...`}
           />
         ) : (
-          <div className="prose prose-slate max-w-none text-gray-600 whitespace-pre-line leading-relaxed text-justify">
+          <div className="prose prose-slate max-w-none text-gray-600 whitespace-pre-line leading-relaxed text-justify pl-1">
             {lesson.content[field] as string}
           </div>
         )}
@@ -324,19 +340,19 @@ const LessonView: React.FC<LessonViewProps> = ({
             <div className="max-w-4xl mx-auto p-6 md:p-12 space-y-10 pb-32">
             
             {/* Introduction */}
-            {renderSection("Uvod", "introduction")}
+            {renderSection("Uvod", "introduction", Icons.FileText)}
 
             {/* Anatomy */}
-            {renderSection("Anatomija", "anatomy", 1, lesson.content.imagePrompts?.[1])}
+            {renderSection("Anatomija", "anatomy", Icons.Anatomy, 1, lesson.content.imagePrompts?.[1])}
 
             {/* Technique / Physiology */}
-            {renderSection("Fiziologija / Procedura", "technique", 2, lesson.content.imagePrompts?.[2])}
+            {renderSection("Fiziologija / Procedura", "technique", Icons.Technique, 2, lesson.content.imagePrompts?.[2])}
 
             {/* Risks / Pathology */}
-            {renderSection("Patologija / Komplikacije", "risks", 3, lesson.content.imagePrompts?.[3])}
+            {renderSection("Patologija / Komplikacije", "risks", Icons.Risks, 3, lesson.content.imagePrompts?.[3])}
 
             {/* Aftercare / Therapy */}
-            {renderSection("Terapija / Zaključak", "aftercare", 4, lesson.content.imagePrompts?.[4])}
+            {renderSection("Terapija / Zaključak", "aftercare", Icons.Aftercare, 4, lesson.content.imagePrompts?.[4])}
 
             {/* Footer for PDF */}
             <div className="mt-12 pt-8 border-t border-gray-100 text-center text-gray-400 text-sm font-serif italic">
@@ -380,6 +396,31 @@ const LessonView: React.FC<LessonViewProps> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {/* Record New Audio Button (If no audio exists) */}
+        {!audioSrc && !isEditing && !printOnly && (
+           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+              <div className="max-w-2xl mx-auto flex justify-center">
+                  <button 
+                    onClick={() => setShowRecorder(true)}
+                    className="flex items-center gap-3 bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full shadow-lg font-medium transition-transform hover:scale-105"
+                  >
+                    <Icons.Mic className="w-5 h-5" />
+                    Snimi Audio za ovu lekciju
+                  </button>
+              </div>
+           </div>
+        )}
+
+        {/* Recorder Modal */}
+        {showRecorder && (
+            <div className="fixed inset-0 z-50 bg-white flex flex-col">
+                <Recorder 
+                    onRecordingComplete={handleNewRecording}
+                    onCancel={() => setShowRecorder(false)}
+                />
+            </div>
         )}
     </div>
   );

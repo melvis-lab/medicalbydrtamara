@@ -205,6 +205,7 @@ export const generateKeyPoints = async (text: string): Promise<string[]> => {
           { text: `
             Analyze the following medical text (in Serbian) and extract 3-5 distinct, important clinical key points (bullet points).
             Keep them concise and educational.
+            CRITICAL: The output MUST be in Serbian language.
             Input Text: "${text}"
           ` }
         ]
